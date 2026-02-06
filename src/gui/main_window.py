@@ -421,9 +421,9 @@ class MainWindow(ctk.CTk):
         table_frame.grid_columnconfigure(0, weight=1)
         table_frame.grid_rowconfigure(0, weight=1)
 
-        # Create Treeview for grouped data (including diputación columns)
-        columns = ("grupo", "concepto", "num_records", "voluntaria", "ejecutiva",
-                   "recargo", "dip_vol", "dip_ejec", "dip_rec", "liquido")
+        # Create Treeview for grouped data (matching Resumen por Ejercicio columns)
+        columns = ("grupo", "concepto", "c_cargo", "c_datas", "c_voluntaria",
+                   "c_ejecutiva", "cc_pendiente", "c_total", "num_records")
         self.grouped_table = ttk.Treeview(
             table_frame, columns=columns, show="tree headings", height=20
         )
@@ -432,27 +432,25 @@ class MainWindow(ctk.CTk):
         self.grouped_table.heading("#0", text="")
         self.grouped_table.heading("grupo", text="Grupo")
         self.grouped_table.heading("concepto", text="Concepto")
+        self.grouped_table.heading("c_cargo", text="C_Cargo")
+        self.grouped_table.heading("c_datas", text="C_Datas")
+        self.grouped_table.heading("c_voluntaria", text="C_Voluntaria")
+        self.grouped_table.heading("c_ejecutiva", text="C_Ejecutiva")
+        self.grouped_table.heading("cc_pendiente", text="CC_Pendiente")
+        self.grouped_table.heading("c_total", text="C_Total")
         self.grouped_table.heading("num_records", text="Registros")
-        self.grouped_table.heading("voluntaria", text="Voluntaria")
-        self.grouped_table.heading("ejecutiva", text="Ejecutiva")
-        self.grouped_table.heading("recargo", text="Recargo")
-        self.grouped_table.heading("dip_vol", text="Dip.Vol")
-        self.grouped_table.heading("dip_ejec", text="Dip.Ejec")
-        self.grouped_table.heading("dip_rec", text="Dip.Rec")
-        self.grouped_table.heading("liquido", text="Líquido")
 
-        # Define column widths (diputación columns visible by default)
+        # Define column widths
         self.grouped_table.column("#0", width=30, minwidth=30, stretch=False)
         self.grouped_table.column("grupo", width=250, minwidth=200, anchor="w")
         self.grouped_table.column("concepto", width=200, minwidth=150, anchor="w")
+        self.grouped_table.column("c_cargo", width=130, minwidth=100, anchor="e")
+        self.grouped_table.column("c_datas", width=130, minwidth=100, anchor="e")
+        self.grouped_table.column("c_voluntaria", width=130, minwidth=100, anchor="e")
+        self.grouped_table.column("c_ejecutiva", width=130, minwidth=100, anchor="e")
+        self.grouped_table.column("cc_pendiente", width=130, minwidth=100, anchor="e")
+        self.grouped_table.column("c_total", width=140, minwidth=100, anchor="e")
         self.grouped_table.column("num_records", width=100, minwidth=80, anchor="center")
-        self.grouped_table.column("voluntaria", width=130, minwidth=100, anchor="e")
-        self.grouped_table.column("ejecutiva", width=130, minwidth=100, anchor="e")
-        self.grouped_table.column("recargo", width=120, minwidth=100, anchor="e")
-        self.grouped_table.column("dip_vol", width=120, minwidth=100, anchor="e", stretch=False)
-        self.grouped_table.column("dip_ejec", width=120, minwidth=100, anchor="e", stretch=False)
-        self.grouped_table.column("dip_rec", width=120, minwidth=100, anchor="e", stretch=False)
-        self.grouped_table.column("liquido", width=140, minwidth=100, anchor="e")
 
         # Scrollbars
         vsb = ttk.Scrollbar(table_frame, orient="vertical", command=self.grouped_table.yview)
@@ -1069,10 +1067,6 @@ class MainWindow(ctk.CTk):
             self.resumen_table.column("dip_ejec", width=120, minwidth=120, stretch=False)
             self.resumen_table.column("dip_rec", width=120, minwidth=120, stretch=False)
 
-            # Show columns in Grouped table
-            self.grouped_table.column("dip_vol", width=120, minwidth=100, stretch=False)
-            self.grouped_table.column("dip_ejec", width=120, minwidth=100, stretch=False)
-            self.grouped_table.column("dip_rec", width=120, minwidth=100, stretch=False)
         else:
             # Hide columns in Cobros table
             self.cobros_table.column("dip_vol", width=0, minwidth=0, stretch=False)
@@ -1084,10 +1078,6 @@ class MainWindow(ctk.CTk):
             self.resumen_table.column("dip_ejec", width=0, minwidth=0, stretch=False)
             self.resumen_table.column("dip_rec", width=0, minwidth=0, stretch=False)
 
-            # Hide columns in Grouped table
-            self.grouped_table.column("dip_vol", width=0, minwidth=0, stretch=False)
-            self.grouped_table.column("dip_ejec", width=0, minwidth=0, stretch=False)
-            self.grouped_table.column("dip_rec", width=0, minwidth=0, stretch=False)
 
     def _on_horizontal_strategy_changed(self, choice):
         """Handle horizontal strategy selection change."""
@@ -1286,7 +1276,7 @@ class MainWindow(ctk.CTk):
                 self.grouped_table.delete(item)
             self.grouped_table.insert(
                 "", "end",
-                values=("No hay datos cargados", "", "", "", "", "", "", "", "", "")
+                values=("No hay datos cargados", "", "", "", "", "", "", "", "")
             )
             return
 
@@ -1356,7 +1346,7 @@ class MainWindow(ctk.CTk):
             # No grouping - show message
             self.grouped_table.insert(
                 "", "end",
-                values=("No hay criterios de agrupación activos", "", "", "", "", "", "", "", "", "")
+                values=("No hay criterios de agrupación activos", "", "", "", "", "", "", "", "")
             )
         else:
             # Use hierarchical grouping logic
@@ -1375,14 +1365,13 @@ class MainWindow(ctk.CTk):
             for ejercicio in sorted(years_data.keys()):
                 year_records = years_data[ejercicio]
 
-                # Calculate year totals (including diputación)
+                # Calculate year totals
+                year_cargo = sum(r.c_cargo for r in year_records)
+                year_datas = sum(r.c_datas for r in year_records)
                 year_voluntaria = sum(r.c_voluntaria for r in year_records)
                 year_ejecutiva = sum(r.c_ejecutiva for r in year_records)
-                year_recargo = Decimal('0')
-                year_dip_vol = Decimal('0')  # sum(Decimal('0') for r inyear_records)
-                year_dip_ejec = Decimal('0')  # sum(Decimal('0') for r inyear_records)
-                year_dip_rec = Decimal('0')  # sum(Decimal('0') for r inyear_records)
-                year_liquido = sum(r.c_total for r in year_records)
+                year_pendiente = sum(r.cc_pendiente for r in year_records)
+                year_total = sum(r.c_total for r in year_records)
 
                 # Insert year header as parent node
                 year_node = self.grouped_table.insert(
@@ -1391,14 +1380,13 @@ class MainWindow(ctk.CTk):
                     values=(
                         f"EJERCICIO {ejercicio}",
                         "",
-                        len(year_records),
+                        f"{year_cargo:,.2f}",
+                        f"{year_datas:,.2f}",
                         f"{year_voluntaria:,.2f}",
                         f"{year_ejecutiva:,.2f}",
-                        f"{year_recargo:,.2f}",
-                        f"{year_dip_vol:,.2f}",
-                        f"{year_dip_ejec:,.2f}",
-                        f"{year_dip_rec:,.2f}",
-                        f"{year_liquido:,.2f}"
+                        f"{year_pendiente:,.2f}",
+                        f"{year_total:,.2f}",
+                        len(year_records)
                     ),
                     tags=("year_header",),
                     open=True
@@ -1472,14 +1460,13 @@ class MainWindow(ctk.CTk):
                 for _, concept_records in group_concept_items:
                     all_group_records.extend(concept_records)
 
-                # Calculate group totals (including diputación)
+                # Calculate group totals
+                group_cargo = sum(r.c_cargo for r in all_group_records)
+                group_datas = sum(r.c_datas for r in all_group_records)
                 group_voluntaria = sum(r.c_voluntaria for r in all_group_records)
                 group_ejecutiva = sum(r.c_ejecutiva for r in all_group_records)
-                group_recargo = Decimal('0')
-                group_dip_vol = Decimal('0')  # sum(Decimal('0') for r inall_group_records)
-                group_dip_ejec = Decimal('0')  # sum(Decimal('0') for r inall_group_records)
-                group_dip_rec = Decimal('0')  # sum(Decimal('0') for r inall_group_records)
-                group_liquido = sum(r.c_total for r in all_group_records)
+                group_pendiente = sum(r.cc_pendiente for r in all_group_records)
+                group_total = sum(r.c_total for r in all_group_records)
 
                 # Insert group header
                 group_node = self.grouped_table.insert(
@@ -1488,14 +1475,13 @@ class MainWindow(ctk.CTk):
                     values=(
                         f"GRUPO: {group.name}",
                         f"Conceptos: {', '.join(group.concept_codes)}",
-                        len(all_group_records),
+                        f"{group_cargo:,.2f}",
+                        f"{group_datas:,.2f}",
                         f"{group_voluntaria:,.2f}",
                         f"{group_ejecutiva:,.2f}",
-                        f"{group_recargo:,.2f}",
-                        f"{group_dip_vol:,.2f}",
-                        f"{group_dip_ejec:,.2f}",
-                        f"{group_dip_rec:,.2f}",
-                        f"{group_liquido:,.2f}"
+                        f"{group_pendiente:,.2f}",
+                        f"{group_total:,.2f}",
+                        len(all_group_records)
                     ),
                     tags=("group_header",),
                     open=True
@@ -1505,14 +1491,13 @@ class MainWindow(ctk.CTk):
                 for concept_code, concept_records in sorted(group_concept_items, key=lambda x: x[0]):
                     concept_name = config.get_concept_name(concept_code)
 
-                    # Calculate concept totals (including diputación)
+                    # Calculate concept totals
+                    concept_cargo = sum(r.c_cargo for r in concept_records)
+                    concept_datas = sum(r.c_datas for r in concept_records)
                     concept_voluntaria = sum(r.c_voluntaria for r in concept_records)
                     concept_ejecutiva = sum(r.c_ejecutiva for r in concept_records)
-                    concept_recargo = Decimal('0')
-                    concept_dip_vol = Decimal('0')  # sum(Decimal('0') for r inconcept_records)
-                    concept_dip_ejec = Decimal('0')  # sum(Decimal('0') for r inconcept_records)
-                    concept_dip_rec = Decimal('0')  # sum(Decimal('0') for r inconcept_records)
-                    concept_liquido = sum(r.c_total for r in concept_records)
+                    concept_pendiente = sum(r.cc_pendiente for r in concept_records)
+                    concept_total = sum(r.c_total for r in concept_records)
 
                     # Insert concept under group
                     self.grouped_table.insert(
@@ -1521,14 +1506,13 @@ class MainWindow(ctk.CTk):
                         values=(
                             "",
                             f"  {concept_name} ({concept_code})",
-                            len(concept_records),
+                            f"{concept_cargo:,.2f}",
+                            f"{concept_datas:,.2f}",
                             f"{concept_voluntaria:,.2f}",
                             f"{concept_ejecutiva:,.2f}",
-                            f"{concept_recargo:,.2f}",
-                            f"{concept_dip_vol:,.2f}",
-                            f"{concept_dip_ejec:,.2f}",
-                            f"{concept_dip_rec:,.2f}",
-                            f"{concept_liquido:,.2f}"
+                            f"{concept_pendiente:,.2f}",
+                            f"{concept_total:,.2f}",
+                            len(concept_records)
                         ),
                         tags=("concept_in_group",)
                     )
@@ -1539,14 +1523,13 @@ class MainWindow(ctk.CTk):
                 concept_records = ungrouped_concepts[concept_code]
                 concept_name = config.get_concept_name(concept_code)
 
-                # Calculate concept totals (including diputación)
+                # Calculate concept totals
+                concept_cargo = sum(r.c_cargo for r in concept_records)
+                concept_datas = sum(r.c_datas for r in concept_records)
                 concept_voluntaria = sum(r.c_voluntaria for r in concept_records)
                 concept_ejecutiva = sum(r.c_ejecutiva for r in concept_records)
-                concept_recargo = Decimal('0')
-                concept_dip_vol = Decimal('0')  # sum(Decimal('0') for r inconcept_records)
-                concept_dip_ejec = Decimal('0')  # sum(Decimal('0') for r inconcept_records)
-                concept_dip_rec = Decimal('0')  # sum(Decimal('0') for r inconcept_records)
-                concept_liquido = sum(r.c_total for r in concept_records)
+                concept_pendiente = sum(r.cc_pendiente for r in concept_records)
+                concept_total = sum(r.c_total for r in concept_records)
 
                 # Insert concept node
                 self.grouped_table.insert(
@@ -1555,14 +1538,13 @@ class MainWindow(ctk.CTk):
                     values=(
                         "",
                         f"{concept_name} ({concept_code})",
-                        len(concept_records),
+                        f"{concept_cargo:,.2f}",
+                        f"{concept_datas:,.2f}",
                         f"{concept_voluntaria:,.2f}",
                         f"{concept_ejecutiva:,.2f}",
-                        f"{concept_recargo:,.2f}",
-                        f"{concept_dip_vol:,.2f}",
-                        f"{concept_dip_ejec:,.2f}",
-                        f"{concept_dip_rec:,.2f}",
-                        f"{concept_liquido:,.2f}"
+                        f"{concept_pendiente:,.2f}",
+                        f"{concept_total:,.2f}",
+                        len(concept_records)
                     ),
                     tags=("concept_ungrouped",)
                 )
@@ -1573,14 +1555,13 @@ class MainWindow(ctk.CTk):
             concept_records = concepts_data[code]
             concept_name = config.get_concept_name(code)
 
-            # Calculate concept totals (including diputación)
+            # Calculate concept totals
+            concept_cargo = sum(r.c_cargo for r in concept_records)
+            concept_datas = sum(r.c_datas for r in concept_records)
             concept_voluntaria = sum(r.c_voluntaria for r in concept_records)
             concept_ejecutiva = sum(r.c_ejecutiva for r in concept_records)
-            concept_recargo = Decimal('0')
-            concept_dip_vol = Decimal('0')  # sum(Decimal('0') for r inconcept_records)
-            concept_dip_ejec = Decimal('0')  # sum(Decimal('0') for r inconcept_records)
-            concept_dip_rec = Decimal('0')  # sum(Decimal('0') for r inconcept_records)
-            concept_liquido = sum(r.c_total for r in concept_records)
+            concept_pendiente = sum(r.cc_pendiente for r in concept_records)
+            concept_total = sum(r.c_total for r in concept_records)
 
             # Insert concept header
             self.grouped_table.insert(
@@ -1589,14 +1570,13 @@ class MainWindow(ctk.CTk):
                 values=(
                     "",
                     f"{concept_name} ({code})",
-                    len(concept_records),
+                    f"{concept_cargo:,.2f}",
+                    f"{concept_datas:,.2f}",
                     f"{concept_voluntaria:,.2f}",
                     f"{concept_ejecutiva:,.2f}",
-                    f"{concept_recargo:,.2f}",
-                    f"{concept_dip_vol:,.2f}",
-                    f"{concept_dip_ejec:,.2f}",
-                    f"{concept_dip_rec:,.2f}",
-                    f"{concept_liquido:,.2f}"
+                    f"{concept_pendiente:,.2f}",
+                    f"{concept_total:,.2f}",
+                    len(concept_records)
                 ),
                 tags=("concept_header",)
             )
@@ -1623,14 +1603,13 @@ class MainWindow(ctk.CTk):
             if group.name in grouped_records:
                 group_records = grouped_records[group.name]
 
-                # Calculate group totals (including diputación)
+                # Calculate group totals
+                group_cargo = sum(r.c_cargo for r in group_records)
+                group_datas = sum(r.c_datas for r in group_records)
                 group_voluntaria = sum(r.c_voluntaria for r in group_records)
                 group_ejecutiva = sum(r.c_ejecutiva for r in group_records)
-                group_recargo = Decimal('0')
-                group_dip_vol = Decimal('0')  # sum(Decimal('0') for r ingroup_records)
-                group_dip_ejec = Decimal('0')  # sum(Decimal('0') for r ingroup_records)
-                group_dip_rec = Decimal('0')  # sum(Decimal('0') for r ingroup_records)
-                group_liquido = sum(r.c_total for r in group_records)
+                group_pendiente = sum(r.cc_pendiente for r in group_records)
+                group_total = sum(r.c_total for r in group_records)
 
                 # Insert group header
                 group_node = self.grouped_table.insert(
@@ -1639,14 +1618,13 @@ class MainWindow(ctk.CTk):
                     values=(
                         f"GRUPO: {group.name}",
                         f"Conceptos: {', '.join(group.concept_codes)}",
-                        len(group_records),
+                        f"{group_cargo:,.2f}",
+                        f"{group_datas:,.2f}",
                         f"{group_voluntaria:,.2f}",
                         f"{group_ejecutiva:,.2f}",
-                        f"{group_recargo:,.2f}",
-                        f"{group_dip_vol:,.2f}",
-                        f"{group_dip_ejec:,.2f}",
-                        f"{group_dip_rec:,.2f}",
-                        f"{group_liquido:,.2f}"
+                        f"{group_pendiente:,.2f}",
+                        f"{group_total:,.2f}",
+                        len(group_records)
                     ),
                     tags=("group_header",),
                     open=True
@@ -1663,14 +1641,13 @@ class MainWindow(ctk.CTk):
                         values=(
                             "",
                             f"  {concept_name} ({code}) - Ej. {record.ejercicio}",
-                            "1",
+                            f"{record.c_cargo:,.2f}",
+                            f"{record.c_datas:,.2f}",
                             f"{record.c_voluntaria:,.2f}",
                             f"{record.c_ejecutiva:,.2f}",
-                            f"{Decimal('0'):,.2f}",
-                            f"{Decimal('0'):,.2f}",
-                            f"{Decimal('0'):,.2f}",
-                            f"{Decimal('0'):,.2f}",
-                            f"{record.c_total:,.2f}"
+                            f"{record.cc_pendiente:,.2f}",
+                            f"{record.c_total:,.2f}",
+                            "1"
                         ),
                         tags=("record_in_group",)
                     )
@@ -1687,14 +1664,13 @@ class MainWindow(ctk.CTk):
                     values=(
                         "",
                         f"{concept_name} ({code}) - Ej. {record.ejercicio}",
-                        "1",
+                        f"{record.c_cargo:,.2f}",
+                        f"{record.c_datas:,.2f}",
                         f"{record.c_voluntaria:,.2f}",
                         f"{record.c_ejecutiva:,.2f}",
-                        f"{Decimal('0'):,.2f}",
-                        f"{Decimal('0'):,.2f}",
-                        f"{Decimal('0'):,.2f}",
-                        f"{Decimal('0'):,.2f}",
-                        f"{record.c_total:,.2f}"
+                        f"{record.cc_pendiente:,.2f}",
+                        f"{record.c_total:,.2f}",
+                        "1"
                     ),
                     tags=("record_ungrouped",)
                 )
@@ -1713,14 +1689,13 @@ class MainWindow(ctk.CTk):
                 values=(
                     "",
                     f"{concept_name} ({code}) - Ej. {record.ejercicio}",
-                    "1",
+                    f"{record.c_cargo:,.2f}",
+                    f"{record.c_datas:,.2f}",
                     f"{record.c_voluntaria:,.2f}",
                     f"{record.c_ejecutiva:,.2f}",
-                    f"{Decimal('0'):,.2f}",
-                    f"{Decimal('0'):,.2f}",
-                    f"{Decimal('0'):,.2f}",
-                    f"{Decimal('0'):,.2f}",
-                    f"{record.c_total:,.2f}"
+                    f"{record.cc_pendiente:,.2f}",
+                    f"{record.c_total:,.2f}",
+                    "1"
                 ),
                 tags=(tag,)
             )
@@ -1741,10 +1716,12 @@ class MainWindow(ctk.CTk):
             year_records = years_data[ejercicio]
 
             # Calculate year totals
+            year_cargo = sum(r.c_cargo for r in year_records)
+            year_datas = sum(r.c_datas for r in year_records)
             year_voluntaria = sum(r.c_voluntaria for r in year_records)
             year_ejecutiva = sum(r.c_ejecutiva for r in year_records)
-            year_recargo = Decimal('0')
-            year_liquido = sum(r.c_total for r in year_records)
+            year_pendiente = sum(r.cc_pendiente for r in year_records)
+            year_total = sum(r.c_total for r in year_records)
 
             # Insert year header as parent node
             year_node = self.grouped_table.insert(
@@ -1753,11 +1730,13 @@ class MainWindow(ctk.CTk):
                 values=(
                     f"EJERCICIO {ejercicio}",
                     "",
-                    len(year_records),
+                    f"{year_cargo:,.2f}",
+                    f"{year_datas:,.2f}",
                     f"{year_voluntaria:,.2f}",
                     f"{year_ejecutiva:,.2f}",
-                    f"{year_recargo:,.2f}",
-                    f"{year_liquido:,.2f}"
+                    f"{year_pendiente:,.2f}",
+                    f"{year_total:,.2f}",
+                    len(year_records)
                 ),
                 tags=("year_header",),
                 open=True
@@ -1782,11 +1761,13 @@ class MainWindow(ctk.CTk):
                         values=(
                             "",
                             f"{concept_name} ({code})",
-                            "1",
+                            f"{record.c_cargo:,.2f}",
+                            f"{record.c_datas:,.2f}",
                             f"{record.c_voluntaria:,.2f}",
                             f"{record.c_ejecutiva:,.2f}",
-                            f"{Decimal('0'):,.2f}",
-                            f"{record.c_total:,.2f}"
+                            f"{record.cc_pendiente:,.2f}",
+                            f"{record.c_total:,.2f}",
+                            "1"
                         ),
                         tags=(tag,)
                     )
@@ -1809,10 +1790,12 @@ class MainWindow(ctk.CTk):
             concept_name = config.get_concept_name(code)
 
             # Calculate concept totals
+            concept_cargo = sum(r.c_cargo for r in concept_records)
+            concept_datas = sum(r.c_datas for r in concept_records)
             concept_voluntaria = sum(r.c_voluntaria for r in concept_records)
             concept_ejecutiva = sum(r.c_ejecutiva for r in concept_records)
-            concept_recargo = Decimal('0')
-            concept_liquido = sum(r.c_total for r in concept_records)
+            concept_pendiente = sum(r.cc_pendiente for r in concept_records)
+            concept_total = sum(r.c_total for r in concept_records)
 
             # Insert concept header as parent node
             concept_node = self.grouped_table.insert(
@@ -1821,11 +1804,13 @@ class MainWindow(ctk.CTk):
                 values=(
                     f"CONCEPTO: {concept_name}",
                     f"Código: {code}",
-                    len(concept_records),
+                    f"{concept_cargo:,.2f}",
+                    f"{concept_datas:,.2f}",
                     f"{concept_voluntaria:,.2f}",
                     f"{concept_ejecutiva:,.2f}",
-                    f"{concept_recargo:,.2f}",
-                    f"{concept_liquido:,.2f}"
+                    f"{concept_pendiente:,.2f}",
+                    f"{concept_total:,.2f}",
+                    len(concept_records)
                 ),
                 tags=("concept_header",),
                 open=True
@@ -1841,11 +1826,13 @@ class MainWindow(ctk.CTk):
                     values=(
                         "",
                         f"Ejercicio {record.ejercicio}",
-                        "1",
+                        f"{record.c_cargo:,.2f}",
+                        f"{record.c_datas:,.2f}",
                         f"{record.c_voluntaria:,.2f}",
                         f"{record.c_ejecutiva:,.2f}",
-                        f"{Decimal('0'):,.2f}",
-                        f"{record.c_total:,.2f}"
+                        f"{record.cc_pendiente:,.2f}",
+                        f"{record.c_total:,.2f}",
+                        "1"
                     ),
                     tags=(tag,)
                 )
@@ -1877,10 +1864,12 @@ class MainWindow(ctk.CTk):
                 group_records = grouped_records[group.name]
 
                 # Calculate group totals
+                group_cargo = sum(r.c_cargo for r in group_records)
+                group_datas = sum(r.c_datas for r in group_records)
                 group_voluntaria = sum(r.c_voluntaria for r in group_records)
                 group_ejecutiva = sum(r.c_ejecutiva for r in group_records)
-                group_recargo = Decimal('0')
-                group_liquido = sum(r.c_total for r in group_records)
+                group_pendiente = sum(r.cc_pendiente for r in group_records)
+                group_total = sum(r.c_total for r in group_records)
 
                 # Insert group header
                 group_node = self.grouped_table.insert(
@@ -1889,11 +1878,13 @@ class MainWindow(ctk.CTk):
                     values=(
                         f"GRUPO: {group.name}",
                         f"Conceptos: {', '.join(group.concept_codes)}",
-                        len(group_records),
+                        f"{group_cargo:,.2f}",
+                        f"{group_datas:,.2f}",
                         f"{group_voluntaria:,.2f}",
                         f"{group_ejecutiva:,.2f}",
-                        f"{group_recargo:,.2f}",
-                        f"{group_liquido:,.2f}"
+                        f"{group_pendiente:,.2f}",
+                        f"{group_total:,.2f}",
+                        len(group_records)
                     ),
                     tags=("group_header",),
                     open=True
@@ -1912,11 +1903,13 @@ class MainWindow(ctk.CTk):
                         values=(
                             "",
                             f"{concept_name} ({code}) - Ej. {record.ejercicio}",
-                            "1",
+                            f"{record.c_cargo:,.2f}",
+                            f"{record.c_datas:,.2f}",
                             f"{record.c_voluntaria:,.2f}",
                             f"{record.c_ejecutiva:,.2f}",
-                            f"{Decimal('0'):,.2f}",
-                            f"{record.c_total:,.2f}"
+                            f"{record.cc_pendiente:,.2f}",
+                            f"{record.c_total:,.2f}",
+                            "1"
                         ),
                         tags=(tag,)
                     )
@@ -1924,10 +1917,12 @@ class MainWindow(ctk.CTk):
 
         # Display ungrouped records
         if ungrouped_records:
+            ungrouped_cargo = sum(r.c_cargo for r in ungrouped_records)
+            ungrouped_datas = sum(r.c_datas for r in ungrouped_records)
             ungrouped_voluntaria = sum(r.c_voluntaria for r in ungrouped_records)
             ungrouped_ejecutiva = sum(r.c_ejecutiva for r in ungrouped_records)
-            ungrouped_recargo = Decimal('0')
-            ungrouped_liquido = sum(r.c_total for r in ungrouped_records)
+            ungrouped_pendiente = sum(r.cc_pendiente for r in ungrouped_records)
+            ungrouped_total = sum(r.c_total for r in ungrouped_records)
 
             ungrouped_node = self.grouped_table.insert(
                 "", "end",
@@ -1935,11 +1930,13 @@ class MainWindow(ctk.CTk):
                 values=(
                     "SIN AGRUPAR",
                     "",
-                    len(ungrouped_records),
+                    f"{ungrouped_cargo:,.2f}",
+                    f"{ungrouped_datas:,.2f}",
                     f"{ungrouped_voluntaria:,.2f}",
                     f"{ungrouped_ejecutiva:,.2f}",
-                    f"{ungrouped_recargo:,.2f}",
-                    f"{ungrouped_liquido:,.2f}"
+                    f"{ungrouped_pendiente:,.2f}",
+                    f"{ungrouped_total:,.2f}",
+                    len(ungrouped_records)
                 ),
                 tags=("concept_header",),
                 open=True
@@ -1956,11 +1953,13 @@ class MainWindow(ctk.CTk):
                     values=(
                         "",
                         f"{concept_name} ({code}) - Ej. {record.ejercicio}",
-                        "1",
+                        f"{record.c_cargo:,.2f}",
+                        f"{record.c_datas:,.2f}",
                         f"{record.c_voluntaria:,.2f}",
                         f"{record.c_ejecutiva:,.2f}",
-                        f"{Decimal('0'):,.2f}",
-                        f"{record.c_total:,.2f}"
+                        f"{record.cc_pendiente:,.2f}",
+                        f"{record.c_total:,.2f}",
+                        "1"
                     ),
                     tags=(tag,)
                 )
@@ -1982,10 +1981,12 @@ class MainWindow(ctk.CTk):
             concept_name = config.get_concept_name(code)
 
             # Calculate concept totals
+            concept_cargo = sum(r.c_cargo for r in concept_records)
+            concept_datas = sum(r.c_datas for r in concept_records)
             concept_voluntaria = sum(r.c_voluntaria for r in concept_records)
             concept_ejecutiva = sum(r.c_ejecutiva for r in concept_records)
-            concept_recargo = Decimal('0')
-            concept_liquido = sum(r.c_total for r in concept_records)
+            concept_pendiente = sum(r.cc_pendiente for r in concept_records)
+            concept_total = sum(r.c_total for r in concept_records)
 
             # Insert concept sub-header
             self.grouped_table.insert(
@@ -1994,11 +1995,13 @@ class MainWindow(ctk.CTk):
                 values=(
                     "",
                     f"{concept_name} ({code})",
-                    len(concept_records),
+                    f"{concept_cargo:,.2f}",
+                    f"{concept_datas:,.2f}",
                     f"{concept_voluntaria:,.2f}",
                     f"{concept_ejecutiva:,.2f}",
-                    f"{concept_recargo:,.2f}",
-                    f"{concept_liquido:,.2f}"
+                    f"{concept_pendiente:,.2f}",
+                    f"{concept_total:,.2f}",
+                    len(concept_records)
                 ),
                 tags=("concept_header",)
             )
