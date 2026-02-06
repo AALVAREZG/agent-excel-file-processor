@@ -1,0 +1,21 @@
+# PDF Processing
+pdfplumber==0.11.0
+PyPDF2==3.0.1
+
+# Data Processing
+pandas==2.2.0
+openpyxl==3.1.2
+
+# GUI
+customtkinter==5.2.2
+pillow==10.2.0
+
+# Utilities
+python-dateutil==2.8.2
+pyyaml==6.0.1
+
+# Template Generation
+jinja2==3.1.3
+
+# Packaging (for building .exe)
+pyinstaller==6.3.0
