@@ -18,6 +18,39 @@ from .html_grouped_exporter import HTMLGroupedExporter
 class HTMLDatasExporter(HTMLGroupedExporter):
     """Exports records with c_datas > 0 to HTML format, inheriting shared logic."""
 
+    # OPAEF-managed concept codes: records may have different years in
+    # clave_recaudacion vs clave_contabilidad and need special treatment.
+    CONCEPTO_GESTION = {
+        '102': 'OPAEF',
+        '204': 'OPAEF',
+        '205': 'OPAEF',
+        '206': 'OPAEF',
+        '208': 'OPAEF',
+        '213': 'OPAEF',
+        '218': 'OPAEF',
+        '501': 'OPAEF',
+        '700': 'OPAEF',
+        '777': 'OPAEF',
+    }
+
+    @staticmethod
+    def _extract_year_from_clave(clave: str) -> str:
+        """Extract the year (first segment) from a clave string.
+
+        Examples:
+            '2025.12.771.777' -> '2025'
+            '2024.E.0000050' -> '2024'
+            '2025.M.91' -> '2025'
+        """
+        if not clave:
+            return ''
+        return clave.split('.')[0]
+
+    def _is_opaef_concept(self, record: TributeRecord) -> bool:
+        """Check if a record belongs to an OPAEF-managed concept."""
+        concept_code = self.grouping_config.get_concept_code(record.clave_recaudacion)
+        return concept_code in self.CONCEPTO_GESTION
+
     def _filter_datas_records(self, records: List[TributeRecord]) -> List[TributeRecord]:
         """Filter records where c_datas > 0."""
         return [r for r in records if r.c_datas > Decimal('0')]
@@ -55,6 +88,67 @@ class HTMLDatasExporter(HTMLGroupedExporter):
         Path(output_path).write_text(html_content, encoding='utf-8')
         return len(datas_records)
 
+    def _get_grouping_year(self, record: TributeRecord) -> int:
+        """Get the year to use for grouping a record.
+
+        For OPAEF concepts, use the year from clave_contabilidad.
+        For other concepts, use ejercicio.
+        """
+        if self._is_opaef_concept(record):
+            cont_year = self._extract_year_from_clave(record.clave_contabilidad)
+            if cont_year.isdigit():
+                return int(cont_year)
+        return record.ejercicio
+
+    def _has_mixed_years(self, record: TributeRecord) -> bool:
+        """Check if a record has different years in clave_recaudacion vs clave_contabilidad."""
+        rec_year = self._extract_year_from_clave(record.clave_recaudacion)
+        cont_year = self._extract_year_from_clave(record.clave_contabilidad)
+        return rec_year != cont_year
+
+    def _split_opaef_mixed_years(self, groups: List[Dict]) -> List[Dict]:
+        """Post-process groups to split OPAEF records with mixed years.
+
+        Within each group, OPAEF records where clave_rec year != clave_cont year
+        are separated into their own sub-group with label '(Rec. {cont_year})'.
+        """
+        result = []
+
+        for group in groups:
+            normal_records = []
+            mixed_records = []
+
+            for record in group['records']:
+                if self._is_opaef_concept(record) and self._has_mixed_years(record):
+                    mixed_records.append(record)
+                else:
+                    normal_records.append(record)
+
+            # Normal records keep the original group
+            if normal_records:
+                result.append({
+                    'name': group['name'],
+                    'records': normal_records,
+                    'c_datas': sum(r.c_datas for r in normal_records)
+                })
+
+            # Mixed records: group by clave_contabilidad year
+            if mixed_records:
+                mixed_by_cont_year = defaultdict(list)
+                for r in mixed_records:
+                    cont_year = self._extract_year_from_clave(r.clave_contabilidad)
+                    mixed_by_cont_year[cont_year].append(r)
+
+                for cont_year in sorted(mixed_by_cont_year.keys()):
+                    year_records = mixed_by_cont_year[cont_year]
+                    result.append({
+                        'name': f"{group['name']} (Rec. {cont_year})",
+                        'records': year_records,
+                        'c_datas': sum(r.c_datas for r in year_records)
+                    })
+
+        return result
+
     def _organize_datas_data(
         self,
         records: List[TributeRecord],
@@ -62,19 +156,30 @@ class HTMLDatasExporter(HTMLGroupedExporter):
         group_by_concept: bool,
         group_by_custom: bool
     ) -> Dict:
-        """Organize datas records according to grouping configuration."""
+        """Organize datas records according to grouping configuration.
+
+        For OPAEF concepts, records are grouped by clave_contabilidad year
+        (not ejercicio), and records with mixed years in their claves are
+        split into separate sub-groups.
+        """
         if group_by_year:
+            years_data_raw = defaultdict(list)
+            for record in records:
+                year = self._get_grouping_year(record)
+                years_data_raw[year].append(record)
+
             years_data = {}
-            for year in sorted(set(r.ejercicio for r in records)):
-                year_records = [r for r in records if r.ejercicio == year]
-                years_data[year] = self._organize_datas_records(
-                    year_records, group_by_concept, group_by_custom
+            for year in sorted(years_data_raw.keys()):
+                groups = self._organize_datas_records(
+                    years_data_raw[year], group_by_concept, group_by_custom
                 )
+                years_data[year] = self._split_opaef_mixed_years(groups)
             return years_data
         else:
-            return {None: self._organize_datas_records(
+            groups = self._organize_datas_records(
                 records, group_by_concept, group_by_custom
-            )}
+            )
+            return {None: self._split_opaef_mixed_years(groups)}
 
     def _organize_datas_records(
         self,
