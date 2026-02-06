@@ -164,11 +164,16 @@ class HTMLDatasExporter(HTMLGroupedExporter):
         return groups
 
     def _build_texto_sical_datas(self, ejercicio: int, group_name: str, records: List[TributeRecord]) -> str:
-        """Build SICAL text for datas report."""
+        """Build SICAL text for datas report.
+
+        Format: CTA. OPAEF/{doc_year}, {group_name} ANULACION DERECHOS {claves_rec} {claves_cont}
+        Note: doc_year is always the document's fiscal year (annual account).
+        """
         claves_rec, claves_cont = self._collect_unique_claves(records)
+        doc_year = self.document.ejercicio
         return (
-            f"OPAEF. REGULARIZACION DATAS {ejercicio} - {group_name} "
-            f"{claves_rec} {claves_cont}"
+            f"CTA. OPAEF/{doc_year}, {group_name} "
+            f"ANULACION DERECHOS {claves_rec} {claves_cont}"
         )
 
     def _generate_datas_html(
