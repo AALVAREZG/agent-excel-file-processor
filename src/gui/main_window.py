@@ -16,6 +16,7 @@ from src.models.liquidation import LiquidationDocument
 from src.extractors.excel_extractor import extract_recaudation_excel, ExcelExtractionError
 from src.exporters.excel_exporter import export_to_excel
 from src.exporters.html_grouped_exporter import export_grouped_to_html
+from src.exporters.html_datas_exporter import export_datas_to_html
 from src.utils.config_manager import ConfigManager
 from src.gui.config_dialog import ConfigDialog
 from src.gui import info_messages
@@ -415,6 +416,16 @@ class MainWindow(ctk.CTk):
         )
         self.export_html_btn.grid(row=0, column=3, sticky="e", padx=(10, 0))
 
+        self.export_datas_btn = ctk.CTkButton(
+            header_frame,
+            text="📋 Exportar Datas HTML",
+            command=self._export_datas_to_html,
+            width=160,
+            height=32,
+            state="disabled"
+        )
+        self.export_datas_btn.grid(row=0, column=4, sticky="e", padx=(10, 0))
+
         # Create frame for table
         table_frame = ctk.CTkFrame(tab)
         table_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
@@ -648,6 +659,7 @@ class MainWindow(ctk.CTk):
         # Enable export buttons
         self.export_excel_btn.configure(state="normal")
         self.export_html_btn.configure(state="normal")
+        self.export_datas_btn.configure(state="normal")
         self.validate_btn.configure(state="normal")
 
         self._set_status(f"Archivo cargado exitosamente: {doc.total_records} registros extraídos")
@@ -1030,6 +1042,54 @@ class MainWindow(ctk.CTk):
             except Exception as e:
                 messagebox.showerror("Error", f"Error al exportar a HTML:\n{str(e)}")
                 self._set_status("Error al exportar")
+
+    def _export_datas_to_html(self):
+        """Export records with c_datas > 0 to HTML."""
+        if not self.current_document:
+            messagebox.showwarning("Advertencia", "No hay documento cargado para exportar")
+            return
+
+        config = self.config_manager.get_grouping_config()
+
+        if not config.group_by_year and not config.group_by_concept and not (config.group_by_custom and config.custom_groups):
+            messagebox.showwarning(
+                "Advertencia",
+                "No hay criterios de agrupación activos.\n\n"
+                "Por favor, configure al menos un criterio de agrupación antes de exportar."
+            )
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            title="Guardar informe Datas HTML",
+            defaultextension=".html",
+            filetypes=[("HTML Files", "*.html"), ("All Files", "*.*")],
+            initialfile=f"liquidacion_{self.current_document.ejercicio}_datas.html"
+        )
+
+        if file_path:
+            try:
+                self._set_status("Exportando informe Datas a HTML...")
+                self._update_concept_names(config)
+                count = export_datas_to_html(
+                    self.current_document,
+                    config,
+                    file_path,
+                    group_by_year=config.group_by_year,
+                    group_by_concept=config.group_by_concept,
+                    group_by_custom=config.group_by_custom
+                )
+                if count == 0:
+                    messagebox.showinfo(
+                        "Sin datos",
+                        "No se encontraron registros con C_Datas > 0."
+                    )
+                    self._set_status("No hay registros con Datas > 0")
+                else:
+                    self._set_status(f"Informe Datas exportado: {count} registros - {Path(file_path).name}")
+                    messagebox.showinfo("Éxito", f"Informe Datas exportado ({count} registros):\n{file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al exportar informe Datas:\n{str(e)}")
+                self._set_status("Error al exportar informe Datas")
 
     def _validate_data(self):
         """Validate current document data."""
