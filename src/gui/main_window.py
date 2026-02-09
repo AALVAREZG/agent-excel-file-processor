@@ -1170,6 +1170,31 @@ class MainWindow(ctk.CTk):
             return []
         return sorted(set(r.ejercicio for r in self.current_document.tribute_records))
 
+    def _get_available_reconocimiento_years(self) -> list:
+        """Get sorted list of unique reconocimiento years (clave_contabilidad year for OPAEF)."""
+        if not self.current_document:
+            return []
+        return sorted(set(self._get_reconocimiento_year(r) for r in self.current_document.tribute_records))
+
+    def _filter_document_by_reconocimiento_year(self, year: Optional[int]):
+        """Create a filtered copy filtering by reconocimiento year instead of ejercicio.
+
+        For OPAEF concepts, the reconocimiento year is clave_contabilidad year.
+        For other concepts, it's ejercicio.
+
+        Returns:
+            (document, filtered) - the document to export and whether it was filtered.
+        """
+        if year is None:
+            return self.current_document, False
+
+        from copy import copy
+        filtered_records = [r for r in self.current_document.tribute_records
+                            if self._get_reconocimiento_year(r) == year]
+        doc = copy(self.current_document)
+        doc.tribute_records = filtered_records
+        return doc, True
+
     def _export_grouped_to_html(self):
         """Export grouped concept records to HTML."""
         if not self.current_document:
@@ -1239,12 +1264,12 @@ class MainWindow(ctk.CTk):
             )
             return
 
-        # Ask for year filter
-        available_years = self._get_available_years()
+        # Ask for year filter (use reconocimiento year for OPAEF concepts)
+        available_years = self._get_available_reconocimiento_years()
         selected_year = self._ask_year_filter(available_years)
         if selected_year == -1:
             return  # Cancelled
-        doc, filtered = self._filter_document_by_year(selected_year)
+        doc, filtered = self._filter_document_by_reconocimiento_year(selected_year)
 
         year_suffix = f"_{selected_year}" if filtered else ""
         file_path = filedialog.asksaveasfilename(
@@ -1295,12 +1320,12 @@ class MainWindow(ctk.CTk):
             )
             return
 
-        # Ask for year filter
-        available_years = self._get_available_years()
+        # Ask for year filter (use reconocimiento year for OPAEF concepts)
+        available_years = self._get_available_reconocimiento_years()
         selected_year = self._ask_year_filter(available_years)
         if selected_year == -1:
             return  # Cancelled
-        doc, filtered = self._filter_document_by_year(selected_year)
+        doc, filtered = self._filter_document_by_reconocimiento_year(selected_year)
 
         year_suffix = f"_{selected_year}" if filtered else ""
         file_path = filedialog.asksaveasfilename(
