@@ -418,16 +418,6 @@ class MainWindow(ctk.CTk):
         )
         self.export_html_btn.grid(row=0, column=3, sticky="e", padx=(10, 0))
 
-        self.export_datas_btn = ctk.CTkButton(
-            header_frame,
-            text="📋 Exportar Datas HTML",
-            command=self._export_datas_to_html,
-            width=160,
-            height=32,
-            state="disabled"
-        )
-        self.export_datas_btn.grid(row=0, column=4, sticky="e", padx=(10, 0))
-
         # Create frame for table
         table_frame = ctk.CTkFrame(tab)
         table_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
@@ -523,6 +513,16 @@ class MainWindow(ctk.CTk):
             state="disabled"
         )
         self.export_rec_html_btn.grid(row=0, column=3, sticky="e", padx=(10, 0))
+
+        self.export_datas_btn = ctk.CTkButton(
+            header_frame,
+            text="📋 Exportar Datas HTML",
+            command=self._export_datas_to_html,
+            width=160,
+            height=32,
+            state="disabled"
+        )
+        self.export_datas_btn.grid(row=0, column=4, sticky="e", padx=(10, 0))
 
         # Table frame
         table_frame = ctk.CTkFrame(tab)
@@ -1098,6 +1098,78 @@ class MainWindow(ctk.CTk):
                 messagebox.showerror("Error", f"Error al exportar:\n{str(e)}")
                 self._set_status("Error al exportar")
 
+    def _ask_year_filter(self, available_years: list) -> Optional[int]:
+        """Show a dialog to select year filter for HTML export.
+
+        Returns:
+            None = all years, int = specific year, -1 = cancelled.
+        """
+        if not available_years or len(available_years) <= 1:
+            return None  # No need to ask, only one year
+
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Filtrar por ejercicio")
+        dialog.geometry("350x200")
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        dialog.grab_set()
+
+        result = {"value": -1}  # -1 = cancelled
+
+        ctk.CTkLabel(
+            dialog, text="Seleccione el ejercicio a exportar:",
+            font=ctk.CTkFont(size=13, weight="bold")
+        ).pack(pady=(20, 10))
+
+        options = ["Todos los ejercicios"] + [str(y) for y in sorted(available_years)]
+        combo = ctk.CTkComboBox(dialog, values=options, width=200, state="readonly")
+        combo.set(options[0])
+        combo.pack(pady=10)
+
+        def on_accept():
+            sel = combo.get()
+            if sel == "Todos los ejercicios":
+                result["value"] = None
+            else:
+                result["value"] = int(sel)
+            dialog.destroy()
+
+        def on_cancel():
+            result["value"] = -1
+            dialog.destroy()
+
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=15)
+        ctk.CTkButton(btn_frame, text="Aceptar", command=on_accept, width=100).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Cancelar", command=on_cancel, width=100,
+                       fg_color="gray", hover_color="darkgray").pack(side="left", padx=5)
+
+        dialog.bind("<Escape>", lambda e: on_cancel())
+        dialog.wait_window()
+        return result["value"]
+
+    def _filter_document_by_year(self, year: Optional[int]):
+        """Create a filtered copy of the document for a specific year.
+
+        Returns:
+            (document, filtered) - the document to export and whether it was filtered.
+        """
+        if year is None:
+            return self.current_document, False
+
+        from copy import copy
+        from src.models.liquidation import LiquidationDocument
+        filtered_records = [r for r in self.current_document.tribute_records if r.ejercicio == year]
+        doc = copy(self.current_document)
+        doc.tribute_records = filtered_records
+        return doc, True
+
+    def _get_available_years(self) -> list:
+        """Get sorted list of unique ejercicio years from current document."""
+        if not self.current_document:
+            return []
+        return sorted(set(r.ejercicio for r in self.current_document.tribute_records))
+
     def _export_grouped_to_html(self):
         """Export grouped concept records to HTML."""
         if not self.current_document:
@@ -1116,11 +1188,19 @@ class MainWindow(ctk.CTk):
             )
             return
 
+        # Ask for year filter
+        available_years = self._get_available_years()
+        selected_year = self._ask_year_filter(available_years)
+        if selected_year == -1:
+            return  # Cancelled
+        doc, filtered = self._filter_document_by_year(selected_year)
+
+        year_suffix = f"_{selected_year}" if filtered else ""
         file_path = filedialog.asksaveasfilename(
             title="Guardar archivo HTML",
             defaultextension=".html",
             filetypes=[("HTML Files", "*.html"), ("All Files", "*.*")],
-            initialfile=f"liquidacion_{self.current_document.ejercicio}_agrupado.html"
+            initialfile=f"liquidacion_{self.current_document.ejercicio}_agrupado{year_suffix}.html"
         )
 
         if file_path:
@@ -1130,7 +1210,7 @@ class MainWindow(ctk.CTk):
                 self._update_concept_names(config)
                 # Export with current grouping settings
                 export_grouped_to_html(
-                    self.current_document,
+                    doc,
                     config,
                     file_path,
                     group_by_year=config.group_by_year,
@@ -1159,11 +1239,19 @@ class MainWindow(ctk.CTk):
             )
             return
 
+        # Ask for year filter
+        available_years = self._get_available_years()
+        selected_year = self._ask_year_filter(available_years)
+        if selected_year == -1:
+            return  # Cancelled
+        doc, filtered = self._filter_document_by_year(selected_year)
+
+        year_suffix = f"_{selected_year}" if filtered else ""
         file_path = filedialog.asksaveasfilename(
             title="Guardar informe Datas HTML",
             defaultextension=".html",
             filetypes=[("HTML Files", "*.html"), ("All Files", "*.*")],
-            initialfile=f"liquidacion_{self.current_document.ejercicio}_datas.html"
+            initialfile=f"liquidacion_{self.current_document.ejercicio}_datas{year_suffix}.html"
         )
 
         if file_path:
@@ -1171,7 +1259,7 @@ class MainWindow(ctk.CTk):
                 self._set_status("Exportando informe Datas a HTML...")
                 self._update_concept_names(config)
                 count = export_datas_to_html(
-                    self.current_document,
+                    doc,
                     config,
                     file_path,
                     group_by_year=config.group_by_year,
@@ -1207,11 +1295,19 @@ class MainWindow(ctk.CTk):
             )
             return
 
+        # Ask for year filter
+        available_years = self._get_available_years()
+        selected_year = self._ask_year_filter(available_years)
+        if selected_year == -1:
+            return  # Cancelled
+        doc, filtered = self._filter_document_by_year(selected_year)
+
+        year_suffix = f"_{selected_year}" if filtered else ""
         file_path = filedialog.asksaveasfilename(
             title="Guardar informe Reconocimiento HTML",
             defaultextension=".html",
             filetypes=[("HTML Files", "*.html"), ("All Files", "*.*")],
-            initialfile=f"liquidacion_{self.current_document.ejercicio}_reconocimiento.html"
+            initialfile=f"liquidacion_{self.current_document.ejercicio}_reconocimiento{year_suffix}.html"
         )
 
         if file_path:
@@ -1220,7 +1316,7 @@ class MainWindow(ctk.CTk):
                 self._set_status("Exportando informe Reconocimiento a HTML...")
                 self._update_concept_names(config)
                 export_reconocimiento_to_html(
-                    self.current_document,
+                    doc,
                     config,
                     file_path,
                     group_by_year=config.group_by_year,
