@@ -229,11 +229,13 @@ class MainWindow(ctk.CTk):
         self.tabview.add("Registros de Cobros")
         self.tabview.add("Resumen por Ejercicio")
         self.tabview.add("Agrupación Personalizada")
+        self.tabview.add("Agrupación por Año Reconocimiento")
 
         # Configure each tab
         self._setup_cobros_tab()
         self._setup_resumen_tab()
         self._setup_grouped_tab()
+        self._setup_reconocimiento_tab()
 
     def _setup_cobros_tab(self):
         """Setup the tribute records (cobros) tab with fancy table."""
@@ -473,6 +475,98 @@ class MainWindow(ctk.CTk):
         vsb.grid(row=0, column=1, sticky="ns")
         hsb.grid(row=1, column=0, sticky="ew")
 
+    def _setup_reconocimiento_tab(self):
+        """Setup the 'Agrupación por Año Reconocimiento' tab."""
+        tab = self.tabview.tab("Agrupación por Año Reconocimiento")
+        tab.grid_columnconfigure(0, weight=1)
+        tab.grid_rowconfigure(1, weight=1)
+
+        # Header frame with buttons
+        header_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        header_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
+        header_frame.grid_columnconfigure(0, weight=1)
+
+        info_label = ctk.CTkLabel(
+            header_frame,
+            text="Agrupación con separación por año de reconocimiento contable (conceptos OPAEF)",
+            font=ctk.CTkFont(size=12),
+            text_color=("gray30", "gray80")
+        )
+        info_label.grid(row=0, column=0, sticky="w")
+
+        info_button = ctk.CTkButton(
+            header_frame,
+            text="ℹ️ Información",
+            command=self._show_reconocimiento_info,
+            width=140,
+            height=28,
+            fg_color="#1976D2",
+            hover_color="#1565C0"
+        )
+        info_button.grid(row=0, column=1, sticky="e", padx=(10, 0))
+
+        refresh_btn = ctk.CTkButton(
+            header_frame,
+            text="↻ Actualizar Vista",
+            command=self._display_reconocimiento_records,
+            width=120,
+            height=32
+        )
+        refresh_btn.grid(row=0, column=2, sticky="e", padx=(10, 0))
+
+        self.export_rec_html_btn = ctk.CTkButton(
+            header_frame,
+            text="📄 Exportar HTML",
+            command=self._export_reconocimiento_to_html,
+            width=140,
+            height=32,
+            state="disabled"
+        )
+        self.export_rec_html_btn.grid(row=0, column=3, sticky="e", padx=(10, 0))
+
+        # Table frame
+        table_frame = ctk.CTkFrame(tab)
+        table_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        table_frame.grid_columnconfigure(0, weight=1)
+        table_frame.grid_rowconfigure(0, weight=1)
+
+        # Same columns as grouped tab
+        columns = ("grupo", "concepto", "c_cargo", "c_datas", "c_voluntaria",
+                   "c_ejecutiva", "cc_pendiente", "c_total", "num_records")
+        self.rec_table = ttk.Treeview(
+            table_frame, columns=columns, show="tree headings", height=20
+        )
+
+        self.rec_table.heading("#0", text="")
+        self.rec_table.heading("grupo", text="Grupo")
+        self.rec_table.heading("concepto", text="Concepto")
+        self.rec_table.heading("c_cargo", text="C_Cargo")
+        self.rec_table.heading("c_datas", text="C_Datas")
+        self.rec_table.heading("c_voluntaria", text="C_Voluntaria")
+        self.rec_table.heading("c_ejecutiva", text="C_Ejecutiva")
+        self.rec_table.heading("cc_pendiente", text="CC_Pendiente")
+        self.rec_table.heading("c_total", text="C_Total")
+        self.rec_table.heading("num_records", text="Registros")
+
+        self.rec_table.column("#0", width=30, minwidth=30, stretch=False)
+        self.rec_table.column("grupo", width=250, minwidth=200, anchor="w")
+        self.rec_table.column("concepto", width=200, minwidth=150, anchor="w")
+        self.rec_table.column("c_cargo", width=130, minwidth=100, anchor="e")
+        self.rec_table.column("c_datas", width=130, minwidth=100, anchor="e")
+        self.rec_table.column("c_voluntaria", width=130, minwidth=100, anchor="e")
+        self.rec_table.column("c_ejecutiva", width=130, minwidth=100, anchor="e")
+        self.rec_table.column("cc_pendiente", width=130, minwidth=100, anchor="e")
+        self.rec_table.column("c_total", width=140, minwidth=100, anchor="e")
+        self.rec_table.column("num_records", width=100, minwidth=80, anchor="center")
+
+        vsb = ttk.Scrollbar(table_frame, orient="vertical", command=self.rec_table.yview)
+        hsb = ttk.Scrollbar(table_frame, orient="horizontal", command=self.rec_table.xview)
+        self.rec_table.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+        self.rec_table.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
+
     def _setup_deducciones_tab(self):
         """Setup the deductions tab with table. [DISABLED - Not used in Excel mode]"""
         pass
@@ -652,6 +746,7 @@ class MainWindow(ctk.CTk):
         self._display_cobros()
         self._display_resumen()
         self._display_grouped_records()
+        self._display_reconocimiento_records()
 
         # Update validation panel
         self._update_validation_panel()
@@ -660,6 +755,7 @@ class MainWindow(ctk.CTk):
         self.export_excel_btn.configure(state="normal")
         self.export_html_btn.configure(state="normal")
         self.export_datas_btn.configure(state="normal")
+        self.export_rec_html_btn.configure(state="normal")
         self.validate_btn.configure(state="normal")
 
         self._set_status(f"Archivo cargado exitosamente: {doc.total_records} registros extraídos")
@@ -960,6 +1056,10 @@ class MainWindow(ctk.CTk):
         """Show information dialog for Agrupación Personalizada tab."""
         InfoDialog(self, "Información - Agrupación Personalizada", info_messages.AGRUPACION_INFO)
 
+    def _show_reconocimiento_info(self):
+        """Show information dialog for Agrupación por Año Reconocimiento tab."""
+        InfoDialog(self, "Información - Agrupación por Año Reconocimiento", info_messages.RECONOCIMIENTO_INFO)
+
     def _show_deducciones_info(self):
         """Show information dialog for Deducciones tab. [DISABLED - Not used in Excel mode]"""
         pass
@@ -1090,6 +1190,48 @@ class MainWindow(ctk.CTk):
             except Exception as e:
                 messagebox.showerror("Error", f"Error al exportar informe Datas:\n{str(e)}")
                 self._set_status("Error al exportar informe Datas")
+
+    def _export_reconocimiento_to_html(self):
+        """Export reconocimiento grouped records to HTML (with OPAEF year splitting)."""
+        if not self.current_document:
+            messagebox.showwarning("Advertencia", "No hay documento cargado para exportar")
+            return
+
+        config = self.config_manager.get_grouping_config()
+
+        if not config.group_by_year and not config.group_by_concept and not (config.group_by_custom and config.custom_groups):
+            messagebox.showwarning(
+                "Advertencia",
+                "No hay criterios de agrupación activos.\n\n"
+                "Por favor, configure al menos un criterio de agrupación antes de exportar."
+            )
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            title="Guardar informe Reconocimiento HTML",
+            defaultextension=".html",
+            filetypes=[("HTML Files", "*.html"), ("All Files", "*.*")],
+            initialfile=f"liquidacion_{self.current_document.ejercicio}_reconocimiento.html"
+        )
+
+        if file_path:
+            try:
+                from src.exporters.html_grouped_reconocimiento_exporter import export_reconocimiento_to_html
+                self._set_status("Exportando informe Reconocimiento a HTML...")
+                self._update_concept_names(config)
+                export_reconocimiento_to_html(
+                    self.current_document,
+                    config,
+                    file_path,
+                    group_by_year=config.group_by_year,
+                    group_by_concept=config.group_by_concept,
+                    group_by_custom=config.group_by_custom
+                )
+                self._set_status(f"Exportado exitosamente a: {Path(file_path).name}")
+                messagebox.showinfo("Éxito", f"Informe Reconocimiento exportado a:\n{file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al exportar:\n{str(e)}")
+                self._set_status("Error al exportar informe Reconocimiento")
 
     def _validate_data(self):
         """Validate current document data."""
@@ -1309,6 +1451,7 @@ class MainWindow(ctk.CTk):
                 self._display_cobros()
                 self._display_resumen()
                 self._display_grouped_records()
+                self._display_reconocimiento_records()
 
         # Pass current records to dialog for concept selection
         current_records = self.current_document.tribute_records if self.current_document else []
@@ -1327,6 +1470,390 @@ class MainWindow(ctk.CTk):
             if code and code not in config.concept_names:
                 # Use the concepto field as the name
                 config.concept_names[code] = record.concepto
+
+    # --- OPAEF year-splitting helpers for reconocimiento tab ---
+
+    CONCEPTO_GESTION = {
+        '102', '204', '205', '206', '208', '213', '218', '501', '700', '777'
+    }
+
+    @staticmethod
+    def _extract_year_from_clave(clave: str) -> str:
+        """Extract the year (first segment) from a clave string."""
+        if not clave:
+            return ''
+        return clave.split('.')[0]
+
+    def _is_opaef_concept(self, record) -> bool:
+        """Check if record belongs to an OPAEF-managed concept."""
+        config = self.config_manager.get_grouping_config()
+        concept_code = config.get_concept_code(record.clave_recaudacion)
+        return concept_code in self.CONCEPTO_GESTION
+
+    def _get_reconocimiento_year(self, record) -> int:
+        """For OPAEF concepts use clave_contabilidad year; else ejercicio."""
+        if self._is_opaef_concept(record):
+            cont_year = self._extract_year_from_clave(record.clave_contabilidad)
+            if cont_year.isdigit():
+                return int(cont_year)
+        return record.ejercicio
+
+    def _has_mixed_years(self, record) -> bool:
+        """Check if clave_recaudacion year differs from clave_contabilidad year."""
+        rec_year = self._extract_year_from_clave(record.clave_recaudacion)
+        cont_year = self._extract_year_from_clave(record.clave_contabilidad)
+        return rec_year != cont_year
+
+    def _display_reconocimiento_records(self):
+        """Display records grouped with OPAEF year-splitting logic."""
+        if not self.current_document:
+            for item in self.rec_table.get_children():
+                self.rec_table.delete(item)
+            self.rec_table.insert(
+                "", "end",
+                values=("No hay datos cargados", "", "", "", "", "", "", "", "")
+            )
+            return
+
+        # Clear existing data
+        for item in self.rec_table.get_children():
+            self.rec_table.delete(item)
+
+        # Get appearance configuration for fonts
+        appearance_config = self.config_manager.get_appearance_config()
+        font_family = appearance_config.font_family
+        font_size = appearance_config.font_size
+
+        # Configure tags (same palette as grouped tab)
+        self.rec_table.tag_configure("year_header", background="#D6E4F0",
+                                     foreground="#2E3440",
+                                     font=(font_family, font_size + 1, "bold"))
+        self.rec_table.tag_configure("group_header", background="#DFF1E1",
+                                     foreground="#2E3440",
+                                     font=(font_family, font_size, "bold"))
+        self.rec_table.tag_configure("concept_header", background="#EEF3F7",
+                                     foreground="#2E3440",
+                                     font=(font_family, font_size, "bold"))
+        self.rec_table.tag_configure("concept_in_group", background="#FFFFFF",
+                                     foreground="#2E3440",
+                                     font=(font_family, font_size))
+        self.rec_table.tag_configure("concept_ungrouped", background="#F5F7FA",
+                                     foreground="#2E3440",
+                                     font=(font_family, font_size, "bold"))
+        # Tag for mixed-year split sub-groups (distinctive amber tint)
+        self.rec_table.tag_configure("mixed_year_header", background="#FFF3E0",
+                                     foreground="#E65100",
+                                     font=(font_family, font_size, "bold"))
+
+        config = self.config_manager.get_grouping_config()
+        self._update_concept_names(config)
+        records = self.current_document.tribute_records
+
+        if not config.group_by_year and not config.group_by_concept and not (config.group_by_custom and config.custom_groups):
+            self.rec_table.insert(
+                "", "end",
+                values=("No hay criterios de agrupación activos", "", "", "", "", "", "", "", "")
+            )
+        else:
+            self._build_reconocimiento_grouping(records, config)
+
+    def _build_reconocimiento_grouping(self, records, config):
+        """Build hierarchical grouping with OPAEF year-splitting."""
+        from collections import defaultdict
+
+        if config.group_by_year:
+            # Group by reconocimiento year
+            years_data = defaultdict(list)
+            for record in records:
+                year = self._get_reconocimiento_year(record)
+                years_data[year].append(record)
+
+            for ejercicio in sorted(years_data.keys()):
+                year_records = years_data[ejercicio]
+
+                year_cargo = sum(r.c_cargo for r in year_records)
+                year_datas = sum(r.c_datas for r in year_records)
+                year_voluntaria = sum(r.c_voluntaria for r in year_records)
+                year_ejecutiva = sum(r.c_ejecutiva for r in year_records)
+                year_pendiente = sum(r.cc_pendiente for r in year_records)
+                year_total = sum(r.c_total for r in year_records)
+
+                year_node = self.rec_table.insert(
+                    "", "end",
+                    text="▼",
+                    values=(
+                        f"EJERCICIO {ejercicio}",
+                        "",
+                        f"{year_cargo:,.2f}",
+                        f"{year_datas:,.2f}",
+                        f"{year_voluntaria:,.2f}",
+                        f"{year_ejecutiva:,.2f}",
+                        f"{year_pendiente:,.2f}",
+                        f"{year_total:,.2f}",
+                        len(year_records)
+                    ),
+                    tags=("year_header",),
+                    open=True
+                )
+
+                self._add_reconocimiento_nested(year_node, year_records, config)
+        else:
+            self._add_reconocimiento_nested(None, records, config)
+
+    def _add_reconocimiento_nested(self, parent_node, records, config):
+        """Add concept/custom grouping with OPAEF mixed-year splitting."""
+        from collections import defaultdict
+
+        parent = parent_node if parent_node else ""
+
+        if config.group_by_concept:
+            concepts_data = defaultdict(list)
+            for record in records:
+                code = config.get_concept_code(record.clave_recaudacion)
+                concepts_data[code].append(record)
+
+            if config.group_by_custom and config.custom_groups:
+                self._add_rec_custom_grouped_concepts(parent, concepts_data, config)
+            else:
+                self._add_rec_concept_nodes(parent, concepts_data, config)
+        else:
+            if config.group_by_custom and config.custom_groups:
+                self._add_rec_custom_groups(parent, records, config)
+            else:
+                # Show individual records
+                for record in records:
+                    code = config.get_concept_code(record.clave_recaudacion)
+                    concept_name = config.get_concept_name(code)
+                    self.rec_table.insert(
+                        parent, "end", text="",
+                        values=(
+                            "", f"{concept_name} ({code}) - Ej. {record.ejercicio}",
+                            f"{record.c_cargo:,.2f}", f"{record.c_datas:,.2f}",
+                            f"{record.c_voluntaria:,.2f}", f"{record.c_ejecutiva:,.2f}",
+                            f"{record.cc_pendiente:,.2f}", f"{record.c_total:,.2f}", "1"
+                        ),
+                        tags=("concept_in_group",)
+                    )
+
+    def _split_and_insert_concept(self, parent, concept_name, code, concept_records, config, tag):
+        """Insert a concept node, splitting OPAEF mixed-year records into sub-groups."""
+        from collections import defaultdict
+
+        normal_records = []
+        mixed_records = []
+
+        for r in concept_records:
+            if self._is_opaef_concept(r) and self._has_mixed_years(r):
+                mixed_records.append(r)
+            else:
+                normal_records.append(r)
+
+        # Normal records: one node
+        if normal_records:
+            cargo = sum(r.c_cargo for r in normal_records)
+            datas = sum(r.c_datas for r in normal_records)
+            vol = sum(r.c_voluntaria for r in normal_records)
+            ejec = sum(r.c_ejecutiva for r in normal_records)
+            pend = sum(r.cc_pendiente for r in normal_records)
+            total = sum(r.c_total for r in normal_records)
+            self.rec_table.insert(
+                parent, "end", text="  ▸",
+                values=(
+                    "", f"{concept_name} ({code})",
+                    f"{cargo:,.2f}", f"{datas:,.2f}", f"{vol:,.2f}",
+                    f"{ejec:,.2f}", f"{pend:,.2f}", f"{total:,.2f}",
+                    len(normal_records)
+                ),
+                tags=(tag,)
+            )
+
+        # Mixed records: grouped by clave_contabilidad year
+        if mixed_records:
+            mixed_by_year = defaultdict(list)
+            for r in mixed_records:
+                cont_year = self._extract_year_from_clave(r.clave_contabilidad)
+                mixed_by_year[cont_year].append(r)
+
+            for cont_year in sorted(mixed_by_year.keys()):
+                year_recs = mixed_by_year[cont_year]
+                cargo = sum(r.c_cargo for r in year_recs)
+                datas = sum(r.c_datas for r in year_recs)
+                vol = sum(r.c_voluntaria for r in year_recs)
+                ejec = sum(r.c_ejecutiva for r in year_recs)
+                pend = sum(r.cc_pendiente for r in year_recs)
+                total = sum(r.c_total for r in year_recs)
+                self.rec_table.insert(
+                    parent, "end", text="  ▸",
+                    values=(
+                        "", f"{concept_name} ({code}) (Rec. {cont_year})",
+                        f"{cargo:,.2f}", f"{datas:,.2f}", f"{vol:,.2f}",
+                        f"{ejec:,.2f}", f"{pend:,.2f}", f"{total:,.2f}",
+                        len(year_recs)
+                    ),
+                    tags=("mixed_year_header",)
+                )
+
+    def _add_rec_concept_nodes(self, parent, concepts_data, config):
+        """Display concept nodes with OPAEF mixed-year splitting."""
+        for code in sorted(concepts_data.keys()):
+            concept_records = concepts_data[code]
+            concept_name = config.get_concept_name(code)
+            self._split_and_insert_concept(
+                parent, concept_name, code, concept_records, config, "concept_header"
+            )
+
+    def _add_rec_custom_grouped_concepts(self, parent, concepts_data, config):
+        """Group concepts into custom groups with OPAEF mixed-year splitting."""
+        from collections import defaultdict
+
+        grouped_concepts = defaultdict(list)
+        ungrouped_concepts = {}
+
+        for concept_code, concept_records in concepts_data.items():
+            group_name = config.get_custom_group_for_concept(concept_code)
+            if group_name:
+                grouped_concepts[group_name].append((concept_code, concept_records))
+            else:
+                ungrouped_concepts[concept_code] = concept_records
+
+        for group in config.custom_groups:
+            if group.name in grouped_concepts:
+                group_concept_items = grouped_concepts[group.name]
+                all_records = []
+                for _, recs in group_concept_items:
+                    all_records.extend(recs)
+
+                cargo = sum(r.c_cargo for r in all_records)
+                datas = sum(r.c_datas for r in all_records)
+                vol = sum(r.c_voluntaria for r in all_records)
+                ejec = sum(r.c_ejecutiva for r in all_records)
+                pend = sum(r.cc_pendiente for r in all_records)
+                total = sum(r.c_total for r in all_records)
+
+                group_node = self.rec_table.insert(
+                    parent, "end", text="  ▸",
+                    values=(
+                        f"GRUPO: {group.name}",
+                        f"Conceptos: {', '.join(group.concept_codes)}",
+                        f"{cargo:,.2f}", f"{datas:,.2f}", f"{vol:,.2f}",
+                        f"{ejec:,.2f}", f"{pend:,.2f}", f"{total:,.2f}",
+                        len(all_records)
+                    ),
+                    tags=("group_header",),
+                    open=True
+                )
+
+                for concept_code, concept_records in sorted(group_concept_items, key=lambda x: x[0]):
+                    concept_name = config.get_concept_name(concept_code)
+                    self._split_and_insert_concept(
+                        group_node, concept_name, concept_code, concept_records, config, "concept_in_group"
+                    )
+
+        for concept_code in sorted(ungrouped_concepts.keys()):
+            concept_records = ungrouped_concepts[concept_code]
+            concept_name = config.get_concept_name(concept_code)
+            self._split_and_insert_concept(
+                parent, concept_name, concept_code, concept_records, config, "concept_ungrouped"
+            )
+
+    def _add_rec_custom_groups(self, parent, records, config):
+        """Apply custom groups directly to records with OPAEF mixed-year splitting."""
+        from collections import defaultdict
+
+        grouped_records = defaultdict(list)
+        ungrouped_records = []
+
+        for record in records:
+            code = config.get_concept_code(record.clave_recaudacion)
+            group_name = config.get_custom_group_for_concept(code)
+            if group_name:
+                grouped_records[group_name].append(record)
+            else:
+                ungrouped_records.append(record)
+
+        for group in config.custom_groups:
+            if group.name in grouped_records:
+                group_recs = grouped_records[group.name]
+
+                # Split normal vs mixed within the group
+                normal = [r for r in group_recs if not (self._is_opaef_concept(r) and self._has_mixed_years(r))]
+                mixed = [r for r in group_recs if self._is_opaef_concept(r) and self._has_mixed_years(r)]
+
+                all_for_header = group_recs
+                cargo = sum(r.c_cargo for r in all_for_header)
+                datas = sum(r.c_datas for r in all_for_header)
+                vol = sum(r.c_voluntaria for r in all_for_header)
+                ejec = sum(r.c_ejecutiva for r in all_for_header)
+                pend = sum(r.cc_pendiente for r in all_for_header)
+                total = sum(r.c_total for r in all_for_header)
+
+                group_node = self.rec_table.insert(
+                    parent, "end", text="  ▸",
+                    values=(
+                        f"GRUPO: {group.name}",
+                        f"Conceptos: {', '.join(group.concept_codes)}",
+                        f"{cargo:,.2f}", f"{datas:,.2f}", f"{vol:,.2f}",
+                        f"{ejec:,.2f}", f"{pend:,.2f}", f"{total:,.2f}",
+                        len(all_for_header)
+                    ),
+                    tags=("group_header",),
+                    open=True
+                )
+
+                for record in normal:
+                    code = config.get_concept_code(record.clave_recaudacion)
+                    concept_name = config.get_concept_name(code)
+                    self.rec_table.insert(
+                        group_node, "end", text="",
+                        values=(
+                            "", f"  {concept_name} ({code}) - Ej. {record.ejercicio}",
+                            f"{record.c_cargo:,.2f}", f"{record.c_datas:,.2f}",
+                            f"{record.c_voluntaria:,.2f}", f"{record.c_ejecutiva:,.2f}",
+                            f"{record.cc_pendiente:,.2f}", f"{record.c_total:,.2f}", "1"
+                        ),
+                        tags=("concept_in_group",)
+                    )
+
+                if mixed:
+                    mixed_by_year = defaultdict(list)
+                    for r in mixed:
+                        cont_year = self._extract_year_from_clave(r.clave_contabilidad)
+                        mixed_by_year[cont_year].append(r)
+
+                    for cont_year in sorted(mixed_by_year.keys()):
+                        for record in mixed_by_year[cont_year]:
+                            code = config.get_concept_code(record.clave_recaudacion)
+                            concept_name = config.get_concept_name(code)
+                            self.rec_table.insert(
+                                group_node, "end", text="",
+                                values=(
+                                    "", f"  {concept_name} ({code}) (Rec. {cont_year}) - Ej. {record.ejercicio}",
+                                    f"{record.c_cargo:,.2f}", f"{record.c_datas:,.2f}",
+                                    f"{record.c_voluntaria:,.2f}", f"{record.c_ejecutiva:,.2f}",
+                                    f"{record.cc_pendiente:,.2f}", f"{record.c_total:,.2f}", "1"
+                                ),
+                                tags=("mixed_year_header",)
+                            )
+
+        if ungrouped_records:
+            for record in ungrouped_records:
+                code = config.get_concept_code(record.clave_recaudacion)
+                concept_name = config.get_concept_name(code)
+                tag = "mixed_year_header" if (self._is_opaef_concept(record) and self._has_mixed_years(record)) else "concept_ungrouped"
+                label = f"{concept_name} ({code}) - Ej. {record.ejercicio}"
+                if self._is_opaef_concept(record) and self._has_mixed_years(record):
+                    cont_year = self._extract_year_from_clave(record.clave_contabilidad)
+                    label = f"{concept_name} ({code}) (Rec. {cont_year}) - Ej. {record.ejercicio}"
+                self.rec_table.insert(
+                    parent, "end", text="",
+                    values=(
+                        "", label,
+                        f"{record.c_cargo:,.2f}", f"{record.c_datas:,.2f}",
+                        f"{record.c_voluntaria:,.2f}", f"{record.c_ejecutiva:,.2f}",
+                        f"{record.cc_pendiente:,.2f}", f"{record.c_total:,.2f}", "1"
+                    ),
+                    tags=(tag,)
+                )
 
     def _display_grouped_records(self):
         """Display records grouped by configuration criteria."""

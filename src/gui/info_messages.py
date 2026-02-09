@@ -114,6 +114,55 @@ USO RECOMENDADO:
 • Para identificar principales fuentes de recaudación"""
 
 
+RECONOCIMIENTO_INFO = """INFORMACIÓN - Agrupación por Año Reconocimiento
+
+QUÉ SE MUESTRA:
+• Misma estructura que "Agrupación Personalizada", pero los registros
+  de conceptos gestionados por OPAEF se agrupan por el año de la
+  clave de contabilidad (año de reconocimiento) en lugar del ejercicio.
+• Los registros cuyo año en clave de recaudación difiere del año en
+  clave de contabilidad se separan en sub-grupos independientes,
+  permitiendo su contabilización individual.
+
+POR QUÉ ES NECESARIO:
+• Algunos tributos gestionados por OPAEF (IBI, IVTM, IAE, Multas, etc.)
+  pueden tener claves de recaudación de un año anterior pero estar
+  contabilizados en el ejercicio actual.
+• Ejemplo: un registro con clave recaudación 2024.12.771.777 y clave
+  contabilidad 2025.M.91 pertenece a recaudación de 2024 pero se
+  reconoce contablemente en 2025.
+• Estos registros deben tratarse por separado para su correcta
+  imputación contable.
+
+CONCEPTOS AFECTADOS (Gestión OPAEF):
+• 102 - IBI Inmuebles Especiales
+• 204, 206 - IAE
+• 205 - IBI Rústica
+• 208 - IBI Urbana
+• 213 - IAE Inspección
+• 218 - Multas por Infracciones Tributarias
+• 501 - IVTM
+• 700 - Intereses de Demora
+• 777 - Multas Tráfico
+
+CÓMO SE IDENTIFICAN:
+• Se extrae el año del primer segmento de clave_recaudacion (ej: 2024.xx.xxx.xxx → 2024)
+• Se extrae el año del primer segmento de clave_contabilidad (ej: 2025.M.91 → 2025)
+• Si ambos años difieren, el registro se separa en un sub-grupo
+  etiquetado como "(Rec. {año_contabilidad})"
+
+DIFERENCIA CON "AGRUPACIÓN PERSONALIZADA":
+• La pestaña "Agrupación Personalizada" agrupa todos los registros
+  por ejercicio sin distinguir años de claves.
+• Esta pestaña separa los registros con años mixtos para que puedan
+  generar asientos contables independientes.
+
+EXPORTACIÓN HTML:
+• El botón "Exportar HTML" genera un informe con la misma estructura
+  que el informe general, pero respetando las separaciones por año
+  de reconocimiento."""
+
+
 DEDUCCIONES_INFO = """INFORMACIÓN - Deducciones
 
 QUÉ SE MUESTRA:
