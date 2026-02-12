@@ -103,7 +103,7 @@ La aplicación genera reportes HTML profesionales con agrupación flexible de co
 
 **2. Mapeo a Partidas Contables**
 
-El sistema incluye un mapeo automático de códigos OPAEF a partidas contables locales:
+El sistema incluye un mapeo automático de códigos Órgano a partidas contables locales:
 
 | Concepto OPAEF | Partida Local | Descripción |
 |----------------|---------------|-------------|
