@@ -94,10 +94,7 @@ Adapt the OPAEF liquidation application to read annual recaudation data from Exc
 ✓ 14 fiscal years identified (2008-2025)
 ✓ Totals calculated and validated
 
-Global Totals:
-- Voluntary: 153,655,920.00 €
-- Executive:   8,623,885.00 €
-- Liquid:    162,279,805.00 €
+
 
 All validation checks passed ✓
 ```
@@ -105,20 +102,7 @@ All validation checks passed ✓
 ### Year Distribution
 | Year | Records | Voluntary | Executive | Liquid |
 |------|---------|-----------|-----------|--------|
-| 2008 | 1 | 0.00 | 0.00 | 0.00 |
-| 2013 | 1 | 0.00 | 55,361.00 | 55,361.00 |
-| 2014 | 7 | 0.00 | 69.00 | 69.00 |
-| 2015 | 33 | 0.00 | 30,226.00 | 30,226.00 |
-| 2016 | 42 | 0.00 | 92,444.00 | 92,444.00 |
-| 2017 | 76 | 0.00 | 242,122.00 | 242,122.00 |
-| 2018 | 52 | 0.00 | 466,036.00 | 466,036.00 |
-| 2019 | 72 | 0.00 | 492,818.00 | 492,818.00 |
-| 2020 | 61 | 200.00 | 218,711.00 | 218,911.00 |
-| 2021 | 72 | 0.00 | 475,160.00 | 475,160.00 |
-| 2022 | 96 | 0.00 | 1,321,544.00 | 1,321,544.00 |
-| 2023 | 17 | 203,399.00 | 612,310.00 | 815,709.00 |
-| 2024 | 32 | 3,294,307.00 | 1,912,584.00 | 5,206,891.00 |
-| 2025 | 53 | 150,158,014.00 | 2,704,500.00 | 152,862,514.00 |
+
 
 ---
 
@@ -195,7 +179,7 @@ diputacion_recargo = 0
 
 ```bash
 # Navigate to project directory
-cd C:\Users\anton\desarrollo\claude-code\AYTO-OTROS\opaef-cta-excel
+
 
 # Run with virtual environment
 venv\Scripts\python main.py
@@ -212,7 +196,7 @@ venv\Scripts\python test_excel_extraction.py
 
 1. Launch application
 2. Click "Cargar Excel" button
-3. Select Excel file (e.g., data/CTA_2025_026.xlsx)
+3. Select Excel file (e.g., data/CTA_2025.xlsx)
 4. View data in tabs:
    - Registros de Cobros
    - Resumen por Ejercicio
