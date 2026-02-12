@@ -3,14 +3,14 @@
 ## 🚀 Launch Application
 
 ```bash
-cd C:\Users\anton\desarrollo\claude-code\AYTO-OTROS\opaef-cta-excel
+cd opaef-cta-excel
 venv\Scripts\python main.py
 ```
 
 ## 📥 Load Excel File
 
 1. Click **"Cargar Excel"** button in the GUI
-2. Navigate to `data\CTA_2025_026.xlsx` (or your file)
+2. Navigate to `data\CTA_2025.xlsx` (or your file)
 3. Wait for extraction (should take 1-2 seconds)
 4. Data appears in tabs automatically
 
@@ -47,7 +47,7 @@ Expected output:
 [OK] Extraction successful!
 - 615 records loaded
 - 14 fiscal years
-- Totals validated: 162,279,805.00€
+- Totals validated: 
 ```
 
 ## ⚙️ Configuration
